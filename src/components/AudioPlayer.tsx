@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { AudioFormat } from '../types';
 import { base64ToBlob } from '../utils/api';
 import styles from './AudioPlayer.module.css';
@@ -20,22 +20,24 @@ function getMimeType(format: AudioFormat | null): string {
 
 export function AudioPlayer({ audioData, format }: Props) {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
-  useEffect(() => {
+  const audioUrl = useMemo(() => {
     if (audioData && format) {
       const mimeType = getMimeType(format);
       const blob = base64ToBlob(audioData, mimeType);
-      const url = URL.createObjectURL(blob);
-      setAudioUrl(url);
-
-      return () => {
-        URL.revokeObjectURL(url);
-      };
-    } else {
-      setAudioUrl(null);
+      return URL.createObjectURL(blob);
     }
+    return null;
   }, [audioData, format]);
+
+  // Cleanup blob URL when it changes or component unmounts
+  useEffect(() => {
+    return () => {
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+    };
+  }, [audioUrl]);
 
   const handleDownload = () => {
     if (!audioUrl || !format) return;
